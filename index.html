@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#1A0C04">
+  <title>80 Glorious Years</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌸</text></svg>">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jsqr/1.4.0/jsQR.min.js"></script>
+  <script type="module" src="js/app.js"></script>
+</head>
+
+<body>
+
+  <!-- ════════════════════════════════════════
+     INVITATION SCREEN
+════════════════════════════════════════ -->
+  <div id="screen-invitation" class="screen active">
+    <!-- Background layers -->
+    <div class="inv-stars"></div>
+    <div class="inv-mandala"></div>
+    <!-- Petals injected by JS -->
+    <div id="petals-layer"></div>
+
+    <!-- The envelope card -->
+    <div class="unfolding-card" id="invCard" onclick="openInvitation()">
+      <!-- Gate doors -->
+      <div class="gate-left">
+        <div class="gate-deco">
+          <div class="gate-deco-sym">✦</div>
+          <div class="gate-deco-line"></div>
+          <div class="gate-deco-sym">✿</div>
+          <div class="gate-deco-line"></div>
+          <div class="gate-deco-sym">✦</div>
+        </div>
+      </div>
+      <div class="gate-right">
+        <div class="gate-deco">
+          <div class="gate-deco-sym">✦</div>
+          <div class="gate-deco-line"></div>
+          <div class="gate-deco-sym">✿</div>
+          <div class="gate-deco-line"></div>
+          <div class="gate-deco-sym">✦</div>
+        </div>
+      </div>
+
+      <!-- Wax seal -->
+      <div class="invitation-seal"></div>
+
+      <!-- Tap hint -->
+      <div class="tap-hint">Tap to open</div>
+
+      <!-- Revealed content -->
+      <div class="card-content">
+        <p class="cormorant italic text-gold"
+          style="font-size:11px;letter-spacing:4px;text-transform:uppercase;margin-bottom:10px;">With Great Joy & Love
+        </p>
+
+        <div class="portrait-frame">
+          <img src="thatha paati.JPG" class="portrait-img" alt="Grandparents"
+            onerror="this.parentElement.innerHTML='<div style=\'width:100%;height:100%;border-radius:50%;background:rgba(201,148,58,0.15);display:flex;align-items:center;justify-content:center;font-size:clamp(28px,8vw,42px)\'>👴🏽</div>'">
+        </div>
+
+        <div class="invite-num">80</div>
+
+        <div class="invite-divider"><span>✦</span></div>
+
+        <p class="cormorant italic" style="color:var(--brown-warm);font-size:clamp(14px,4vw,17px);margin-bottom:6px;">
+          Glorious Years of Wisdom & Grace</p>
+
+        <div style="margin-bottom:12px;">
+          <p style="font-size:12px;color:var(--text-mid);line-height:1.7;">
+            We celebrate a milestone of love, laughter,<br>and timeless grace.<br>
+            Your presence makes this evening complete.
+          </p>
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--cream);">
+            <p id="invitation-date"
+              style="font-size:10px;letter-spacing:3px;font-weight:700;color:var(--gold);text-transform:uppercase;"></p>
+            <p id="invitation-venue" class="cormorant italic"
+              style="font-size:13px;color:var(--brown-warm);margin-top:2px;"></p>
+          </div>
+        </div>
+
+        <button class="btn-enter-inv" onclick="showScreen('screen-login'); event.stopPropagation();">
+          Accept This Invitation ✦
+        </button>
+
+        <button class="pooja-link" onclick="handlePoojaGallery(); event.stopPropagation();">
+          ✦ View Temple Pooja ✦
+        </button>
+
+        <div class="floral-row">✿ ❀ ✾ ❁ ✿</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════
+     LOGIN SCREEN
+════════════════════════════════════════ -->
+  <div id="screen-login" class="screen">
+    <div
+      style="flex:1;display:flex;align-items:center;justify-content:center;padding:24px;background:linear-gradient(160deg,var(--brown-deep),var(--brown-mid));padding-top:calc(24px + var(--safe-top));">
+      <div class="login-box">
+        <div class="login-logo fade-up">
+          <div class="login-num">80</div>
+          <p class="login-tag">Welcome to the Celebration 🌸</p>
+        </div>
+
+        <div id="phone-section" class="fade-up fade-up-2">
+          <div class="form-group">
+            <label class="form-label">Your Mobile Number</label>
+            <input type="tel" id="phone-input" class="input-field" placeholder="+91 98765 43210" inputmode="tel">
+            <p class="input-hint">We'll send you a one-time password to confirm it's really you 🌸</p>
+          </div>
+          <button class="btn-gold" id="btn-fast-login">Enter Celebration ✦</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════
+     GUEST FORM SCREEN
+════════════════════════════════════════ -->
+  <div id="screen-guest-form" class="screen">
+    <header class="page-header">
+      <div>
+        <h1>Your Details</h1>
+        <p class="sub">Help us make your experience special</p>
+      </div>
+      <button class="exit-btn" onclick="logout()">Exit</button>
+    </header>
+
+    <main class="page-body no-nav">
+
+      <div class="section-card fade-up">
+        <p class="card-title">Who is joining us? 🌸</p>
+        <p class="card-subtitle">We are so thrilled to have you with us. Please share a little about yourself and your
+          family so we can prepare everything just right.</p>
+
+        <div class="form-group">
+          <label class="form-label">Your Name</label>
+          <input type="text" id="guest-name" class="input-field" placeholder="Your full name" autocomplete="name">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Family Members Attending</label>
+          <div class="stepper">
+            <button class="stepper-btn" type="button" onclick="stepCount(-1)" aria-label="Decrease">−</button>
+            <input type="number" id="guest-count" class="input-field stepper-val" value="1" min="1" max="30" readonly>
+            <button class="stepper-btn" type="button" onclick="stepCount(1)" aria-label="Increase">+</button>
+          </div>
+          <p class="input-hint">Including yourself — this helps us prepare the perfect amount 🙏</p>
+        </div>
+      </div>
+
+      <div class="section-card fade-up fade-up-2">
+        <p class="card-title">🌿 Your Food Preferences</p>
+        <p class="card-subtitle">Every dish has been lovingly chosen. Select what your family enjoys — this is how we
+          ensure every plate is filled with your favourites and nothing goes to waste.</p>
+        <div id="dishes-container">
+          <p class="no-data">Curating the menu with love... 🌸</p>
+        </div>
+      </div>
+
+      <div class="section-card fade-up fade-up-3">
+        <p class="card-title">⭐ A Special Request</p>
+        <p class="card-subtitle">Is there a beloved dish your family would love to have? We'll do our very best to
+          include it specially for you.</p>
+        <div class="form-group">
+          <label class="form-label">Your Family's Favourite (optional)</label>
+          <input type="text" id="fav-dish" class="input-field" placeholder="e.g. Paruppu Payasam, Amma's Aviyal...">
+        </div>
+      </div>
+
+      <div class="section-card fade-up fade-up-4">
+        <p class="card-title">📸 Your Family Photo</p>
+        <p class="card-subtitle">A photo helps our caring team recognise and serve your family with a warm, personal
+          touch at the celebration.</p>
+        <div class="photo-zone" onclick="document.getElementById('family-photo').click()">
+          <input type="file" id="family-photo" accept="image/*" onchange="updatePhotoLabel(this, 'photo-label')">
+          <div class="photo-zone-icon">📷</div>
+          <p class="photo-zone-text" id="photo-label">Tap here to choose a photo</p>
+          <p class="photo-zone-sub">Your photo is private and only visible to our service team</p>
+        </div>
+      </div>
+
+      <button class="btn-gold" onclick="submitGuestForm()" id="btn-submit" style="margin-bottom:32px;">
+        Save & Get My Entry Pass ✦
+      </button>
+
+    </main>
+  </div>
+
+  <!-- ════════════════════════════════════════
+     GUEST DASHBOARD SCREEN
+════════════════════════════════════════ -->
+  <div id="screen-guest-dashboard" class="screen">
+    <header class="page-header">
+      <div>
+        <h1>Your Pass ✦</h1>
+        <p class="sub">Everything is beautifully set</p>
+      </div>
+      <button class="exit-btn" onclick="logout()">Exit</button>
+    </header>
+
+    <main class="page-body" id="dashboard-body">
+
+      <!-- Hero -->
+      <div class="guest-hero fade-up">
+        <img id="g-avatar-img" class="g-avatar" src="" alt="" style="display:none;">
+        <div class="g-avatar-ph" id="g-avatar-ph">🌸</div>
+        <div class="g-name" id="display-name"></div>
+        <div class="g-tag">👨‍👩‍👧 <span id="display-count">1</span> guests attending</div>
+      </div>
+
+      <!-- QR Card -->
+      <div class="qr-card fade-up fade-up-2">
+        <p>Please show this to our team upon arrival.<br><strong>Your specially prepared meal awaits you!</strong></p>
+        <div id="qrcode"></div>
+        <p class="qr-caption">✦ SHOW AT ENTRY ✦</p>
+      </div>
+
+      <!-- Dishes -->
+      <div class="section-card fade-up fade-up-3">
+        <p class="card-title">🌿 Your Selected Dishes</p>
+        <div id="dish-summary" style="margin-top:10px;"></div>
+      </div>
+
+      <!-- Outfit (locked by default) -->
+      <div id="outfit-locked-wrap">
+        <div class="outfit-locked fade-up fade-up-4">
+          <div class="lock-icon">🔒</div>
+          <h3>Outfit Contest Unlocks at the Event!</h3>
+          <p>When our team scans your QR at entry, your outfit upload will open. Dress your finest — every guest votes
+            for the best dressed star of the evening! 🌟</p>
+        </div>
+      </div>
+
+      <div id="outfit-open-wrap" style="display:none;">
+        <div class="section-card fade-up">
+          <p class="card-title">👗 Share Your Look</p>
+          <p class="card-subtitle">The spotlight is yours! Upload your outfit photo and let the celebration vote. The
+            most liked look wins the Best Dressed title! ✨</p>
+          <div class="photo-zone" onclick="document.getElementById('outfit-file').click()" style="margin-bottom:14px;">
+            <input type="file" id="outfit-file" accept="image/*" onchange="updatePhotoLabel(this, 'outfit-label')">
+            <div class="photo-zone-icon">✨</div>
+            <p class="photo-zone-text" id="outfit-label">Tap to upload your outfit</p>
+          </div>
+          <button class="btn-gold" onclick="uploadOutfitPhoto()">Upload My Look ✦</button>
+        </div>
+      </div>
+
+      <!-- Photo Wall -->
+      <div class="section-card fade-up fade-up-5">
+        <p class="card-title">🌟 Outfit Gallery & Votes</p>
+        <p class="card-subtitle" style="margin-bottom:12px;">Show some love to your favourite looks! ♥</p>
+        <div class="photo-wall" id="photo-wall">
+          <p class="no-data" style="grid-column:1/-1;">Loading the gallery... 🌸</p>
+        </div>
+      </div>
+
+      <!-- Feedback -->
+      <div class="section-card fade-up">
+        <p class="card-title">💌 Share Your Experience</p>
+        <p class="card-subtitle">Your words of warmth mean everything to this family. How did we do today?</p>
+        <div class="star-row" id="star-row">
+          <span class="star" data-val="1" onclick="setStars(1)">★</span>
+          <span class="star" data-val="2" onclick="setStars(2)">★</span>
+          <span class="star" data-val="3" onclick="setStars(3)">★</span>
+          <span class="star" data-val="4" onclick="setStars(4)">★</span>
+          <span class="star" data-val="5" onclick="setStars(5)">★</span>
+        </div>
+        <div class="form-group">
+          <textarea id="feedback-msg" class="input-field" rows="4"
+            placeholder="Share a warm memory, a kind word, or a heartfelt message for this beautiful family... 🌸"
+            style="resize:none;border-radius:12px;"></textarea>
+        </div>
+        <button class="btn-gold" onclick="submitFeedback()">Send My Warm Wishes 💛</button>
+      </div>
+
+    </main>
+
+    <!-- Bottom Nav -->
+    <nav class="bottom-nav" id="guest-nav">
+      <button class="active" onclick="switchGuestTab('screen-guest-dashboard', this)">
+        <span class="nav-icon">🎟️</span>
+        <span class="nav-label">My Pass</span>
+      </button>
+      <button onclick="handlePoojaGallery()">
+        <span class="nav-icon">🛕</span>
+        <span class="nav-label">Pooja</span>
+      </button>
+      <button onclick="handleOutfitUpload(this)">
+        <span class="nav-icon">👗</span>
+        <span class="nav-label">Outfit</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- ════════════════════════════════════════
+     TEMPLE POOJA SCREEN
+════════════════════════════════════════ -->
+  <div id="screen-pooja" class="screen">
+    <header class="page-header">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <button onclick="showScreen('screen-guest-dashboard')"
+          style="background:none;border:none;color:var(--gold-light);font-size:22px;min-width:44px;min-height:44px;display:flex;align-items:center;">←</button>
+        <div>
+          <h1>Temple Pooja</h1>
+          <p class="sub">Sacred Blessings</p>
+        </div>
+      </div>
+      <button class="exit-btn" onclick="logout()">Exit</button>
+    </header>
+    <main style="padding-bottom:calc(var(--nav-h) + 24px + var(--safe-bottom));">
+      <div class="pooja-grid" id="pooja-gallery-container"></div>
+    </main>
+    <nav class="bottom-nav">
+      <button onclick="showScreen('screen-guest-dashboard')">
+        <span class="nav-icon">🎟️</span><span class="nav-label">My Pass</span>
+      </button>
+      <button class="active">
+        <span class="nav-icon">🛕</span><span class="nav-label">Pooja</span>
+      </button>
+      <button onclick="handleOutfitUpload(this)">
+        <span class="nav-icon">👗</span><span class="nav-label">Outfit</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- ════════════════════════════════════════
+     WAITER SCREEN
+════════════════════════════════════════ -->
+  <div id="screen-waiter" class="screen">
+    <header class="page-header">
+      <div>
+        <h1>Service Mode</h1>
+        <p class="sub">Serve with love 🌸</p>
+      </div>
+      <button class="exit-btn" onclick="logout()">Exit</button>
+    </header>
+
+    <div class="waiter-body hide-sb">
+      <!-- Checkin by phone number -->
+      <div class="checkin-wrap">
+        <p class="checkin-title">Guest Check-In</p>
+        <div class="checkin-row">
+          <input type="tel" id="checkin-phone" class="input-field" placeholder="Guest mobile number" inputmode="tel">
+          <button class="btn-gold w-auto" onclick="checkInGuest()">Verify</button>
+        </div>
+        <div id="checkin-result"></div>
+      </div>
+
+      <!-- OR scan QR -->
+      <div style="text-align:center;">
+        <div class="divider"><span>or scan QR code</span></div>
+      </div>
+
+      <div id="waiter-scan-area">
+        <p class="scan-hint">Point camera at guest's QR code</p>
+        <div class="scan-wrap">
+          <video id="waiter-video" playsinline muted></video>
+          <canvas id="scan-canvas"></canvas>
+          <div class="scan-line"></div>
+          <div class="scan-corner tl"></div>
+          <div class="scan-corner tr"></div>
+          <div class="scan-corner bl"></div>
+          <div class="scan-corner br"></div>
+        </div>
+        <p class="scan-sub">Scanning automatically ✦</p>
+        <button id="btn-retry-camera" class="btn-outline" style="display:none;margin:20px auto 0;width:auto;"
+          onclick="retryWaiterScanner()">Retry Camera 📸</button>
+      </div>
+
+      <!-- Result card (hidden until scan) -->
+      <div id="waiter-result" style="display:none;"></div>
+
+      <!-- Assigned queue -->
+      <div id="waiter-queue-wrap">
+        <p
+          style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(201,148,58,0.6);margin-bottom:12px;">
+          My Assigned Guests</p>
+        <div id="waiter-queue">
+          <p class="no-data" style="color:rgba(255,255,255,0.3);">No guests assigned yet 🌸</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════
+     ADMIN SCREEN
+════════════════════════════════════════ -->
+  <div id="screen-admin" class="screen">
+    <header class="page-header">
+      <div>
+        <h1>Admin Console</h1>
+        <div class="conn-pill" id="connection-status">
+          <div class="conn-dot off animate-pulse"></div>
+          <span>Connecting...</span>
+        </div>
+      </div>
+      <button class="exit-btn" onclick="logout()">Exit</button>
+    </header>
+
+    <!-- Tab bar -->
+    <div class="admin-tabs-bar hide-sb">
+      <button class="admin-tab active" onclick="switchAdminTab(this,'admin-section-overview')">📊 Overview</button>
+      <button class="admin-tab" onclick="switchAdminTab(this,'admin-section-guests')">🌸 Guests</button>
+      <button class="admin-tab" onclick="switchAdminTab(this,'admin-section-menu')">🌿 Menu</button>
+      <button class="admin-tab" onclick="switchAdminTab(this,'admin-section-team')">👤 Team</button>
+      <button class="admin-tab" onclick="switchAdminTab(this,'admin-section-contest')">👗 Contest</button>
+      <button class="admin-tab" onclick="switchAdminTab(this,'admin-section-feedback')">💌 Feedback</button>
+    </div>
+
+    <main class="page-body no-nav hide-sb">
+
+      <!-- OVERVIEW -->
+      <div id="admin-section-overview" class="admin-section active">
+        <div class="stats-row fade-up">
+          <div class="stat-card">
+            <div class="stat-num" id="stat-total">—</div>
+            <div class="stat-label">Families</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num" id="stat-served">—</div>
+            <div class="stat-label">Served</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num" id="stat-members">—</div>
+            <div class="stat-label">Total Guests</div>
+          </div>
+        </div>
+        <div class="section-card fade-up fade-up-2">
+          <p class="card-title">🍽️ Kitchen Demand Forecast</p>
+          <p class="card-subtitle">Estimated portions per dish — share this with the kitchen team before the event.</p>
+          <div id="dish-analytics">
+            <p class="no-data">Loading...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- GUESTS -->
+      <div id="admin-section-guests" class="admin-section">
+        <div class="section-card">
+          <p class="card-title">All Registered Guests 🌸</p>
+          <div id="admin-guest-list" style="margin-top:10px;"></div>
+        </div>
+      </div>
+
+      <!-- MENU -->
+      <div id="admin-section-menu" class="admin-section">
+        <div class="section-card">
+          <p class="card-title" style="margin-bottom:14px;">Add Dish to Menu 🌿</p>
+          <div class="dish-form-grid">
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">Dish Name *</label>
+              <input type="text" id="new-dish-name" class="input-field" placeholder="e.g. Sambar Rice">
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">Emoji</label>
+              <input type="text" id="new-dish-emoji" class="input-field" placeholder="🍛"
+                style="text-align:center;font-size:20px!important;">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Category *</label>
+            <input type="text" id="new-dish-category" class="input-field"
+              placeholder="e.g. Main Course, Starters, Desserts">
+          </div>
+          <button class="btn-gold" onclick="addNewDish()">Add to Menu ✦</button>
+        </div>
+        <div class="section-card">
+          <p class="card-title" style="margin-bottom:14px;">Current Menu</p>
+          <div id="admin-dish-list"></div>
+        </div>
+      </div>
+
+      <!-- TEAM -->
+      <div id="admin-section-team" class="admin-section">
+        <div class="section-card">
+          <p class="card-title" style="margin-bottom:6px;">Service Team</p>
+          <p class="card-subtitle">Add the mobile numbers of waiters who will serve guests at the event.</p>
+          <div class="form-group">
+            <label class="form-label">Mobile Number</label>
+            <input type="tel" id="new-waiter-phone" class="input-field" placeholder="+91 98765 43210" inputmode="tel">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Role</label>
+            <select id="new-staff-role" class="input-field">
+              <option value="waiter">Waiter 👨‍💼</option>
+              <option value="admin">Admin 👑</option>
+            </select>
+          </div>
+          <button class="btn-gold" onclick="addNewStaff()">Add to Team</button>
+          <div id="admin-waiter-list" style="margin-top:16px;"></div>
+        </div>
+      </div>
+
+      <!-- CONTEST -->
+      <div id="admin-section-contest" class="admin-section">
+        <div class="section-card">
+          <p class="card-title">👑 Best Dressed Leaderboard</p>
+          <p class="card-subtitle" style="margin-bottom:12px;">Live rankings by guest votes. The leader at closing wins!
+          </p>
+          <div class="contest-grid" id="admin-outfit-contest">
+            <p class="no-data">No outfits uploaded yet</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- FEEDBACK -->
+      <div id="admin-section-feedback" class="admin-section">
+        <div class="section-card">
+          <p class="card-title">💌 Guest Feedback</p>
+          <div id="admin-feedback-list" style="margin-top:10px;"></div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- ════════════════════════════════════════
+     ALLOCATION MODAL (Bottom Sheet)
+════════════════════════════════════════ -->
+  <div id="modal-allocation">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <p class="modal-title">Assign Guest</p>
+      <p class="modal-gname" id="alloc-guest-name"></p>
+      <div class="form-group">
+        <label class="form-label">Table Number</label>
+        <input type="number" id="alloc-table" class="input-field" placeholder="e.g. 12" inputmode="numeric">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Assign Waiter</label>
+        <select id="alloc-waiter" class="input-field"></select>
+      </div>
+      <div class="modal-btns">
+        <button class="btn-gold" style="flex:1;" onclick="confirmAllocation()">Confirm ✦</button>
+        <button class="btn-cancel" onclick="closeAllocationModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loader -->
+  <div id="loader">
+    <div class="loader-spin"></div>
+    <p class="loader-txt">One moment... 🌸</p>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast"></div>
+
+  <script>
+    // ── Global UI helpers ──
+    window.openInvitation = function () {
+      document.getElementById('invCard').classList.toggle('open');
+    };
+
+    window.stepCount = function (delta) {
+      const el = document.getElementById('guest-count');
+      const v = parseInt(el.value) + delta;
+      if (v >= 1 && v <= 30) el.value = v;
+    };
+
+    window.updatePhotoLabel = function (input, labelId) {
+      if (input.files[0]) {
+        document.getElementById(labelId).textContent = '📸 ' + input.files[0].name;
+      }
+    };
+
+    window.setStars = function (val) {
+      document.querySelectorAll('.star').forEach(s => {
+        s.classList.toggle('active', parseInt(s.dataset.val) <= val);
+      });
+    };
+
+
+    window.switchGuestTab = function (screenId, btn) {
+      document.querySelectorAll('#guest-nav button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      showScreen(screenId);
+    };
+
+    // Spawn floating petals on invitation screen
+    (function spawnPetals() {
+      const layer = document.getElementById('petals-layer');
+      if (!layer) return;
+      const symbols = ['✿', '❋', '❀', '✾', '❁', '🌸', '⚘', '✦'];
+      for (let i = 0; i < 30; i++) {
+        const p = document.createElement('div');
+        p.className = 'petal';
+        p.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+        p.style.cssText = `
+      left: ${Math.random() * 100}%;
+      animation-delay: ${Math.random() * 12}s;
+      animation-duration: ${7 + Math.random() * 10}s;
+      font-size: ${10 + Math.random() * 14}px;
+      opacity: 0;
+    `;
+        layer.appendChild(p);
+      }
+    })();
+
+    // Remove tap-hint after card is opened once
+    document.addEventListener('DOMContentLoaded', () => {
+      const card = document.getElementById('invCard');
+      if (card) {
+        card.addEventListener('click', () => {
+          setTimeout(() => {
+            const hint = card.querySelector('.tap-hint');
+            if (hint) hint.style.display = 'none';
+          }, 500);
+        }, { once: true });
+      }
+    });
+  </script>
+
+</body>
+
+</html>
