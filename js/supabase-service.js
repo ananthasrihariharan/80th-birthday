@@ -8,27 +8,38 @@ export const supabase = createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKe
 // AUTH & ROLE MANAGEMENT
 // ════════════════════════════════════════════════
 
+// Helper to ensure phone numbers are consistent
+export function normalizePhone(phone) {
+    if (!phone) return "";
+    const clean = phone.replace(/[\s-]/g, '');
+    return clean.startsWith('+') ? clean : '+91' + clean;
+}
+
 export async function getUserRole(phone) {
-    if (ADMIN_PHONES.includes(phone)) return 'admin';
+    const fullPhone = normalizePhone(phone);
+    if (ADMIN_PHONES.includes(fullPhone)) return 'admin';
 
     const { data, error } = await supabase
         .from('roles')
         .select('role')
-        .eq('phone', phone)
-        .single();
+        .eq('phone', fullPhone)
+        .maybeSingle();
 
     if (data) return data.role;
     return 'guest';
 }
 
-export async function addStaffRole(phone, role) {
+export async function addStaffRole(phone, role, name = null) {
     if (!phone || !role) return;
-    const fullPhone = phone.startsWith('+') ? phone : '+91' + phone;
-    await supabase.from('roles').upsert({ phone: fullPhone, role });
+    const fullPhone = normalizePhone(phone);
+    const payload = { phone: fullPhone, role };
+    if (name) payload.name = name;
+    await supabase.from('roles').upsert(payload);
 }
 
 export async function removeStaff(phone) {
-    await supabase.from('roles').delete().eq('phone', phone);
+    const fullPhone = normalizePhone(phone);
+    await supabase.from('roles').delete().eq('phone', fullPhone);
 }
 
 export function listenToStaff(callback) {
@@ -49,17 +60,48 @@ async function fetchStaff(callback) {
     callback(data || []);
 }
 
+export async function setOutfitContestState(isActive) {
+    // Use fixed key — do NOT go through normalizePhone as this is a settings row, not a phone
+    const { error } = await supabase.from('roles').upsert(
+        { phone: '__OUTFIT_CONTEST__', role: isActive ? 'active' : 'locked' },
+        { onConflict: 'phone' }
+    );
+    if (error) {
+        // Fallback: try insert then update
+        await supabase.from('roles').insert({ phone: '__OUTFIT_CONTEST__', role: isActive ? 'active' : 'locked' })
+            .then(() => {})
+            .catch(() => supabase.from('roles').update({ role: isActive ? 'active' : 'locked' }).eq('phone', '__OUTFIT_CONTEST__'));
+    }
+}
+
+export function listenToOutfitContestState(callback) {
+    const KEY = '__OUTFIT_CONTEST__';
+    const channel = supabase.channel('setting-outfit-contest')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'roles', filter: `phone=eq.${KEY}` }, (payload) => {
+            callback(payload.new?.role === 'active');
+        }).subscribe();
+
+    // Initial fetch
+    supabase.from('roles').select('role').eq('phone', KEY).maybeSingle().then(({ data }) => {
+        callback(data?.role === 'active');
+    });
+
+    return () => supabase.removeChannel(channel);
+}
+
 // ════════════════════════════════════════════════
 // GUEST ALLOCATION
 // ════════════════════════════════════════════════
 
 export async function allocateGuest(guestPhone, waiterPhone, tableNumber) {
+    const fullGuestPhone = normalizePhone(guestPhone);
+    const fullWaiterPhone = normalizePhone(waiterPhone);
     const { error } = await supabase.from('guests').update({
-        assigned_waiter: waiterPhone,
+        assigned_waiter: fullWaiterPhone,
         table_number: tableNumber,
         status: 'active',
         allocated_at: new Date().toISOString()
-    }).eq('phone', guestPhone);
+    }).eq('phone', fullGuestPhone);
     if (error) throw error;
 }
 
@@ -86,7 +128,8 @@ async function fetchAssignedGuests(waiterPhone, callback) {
 }
 
 export async function updateGuestStatus(guestPhone, status) {
-    const { error } = await supabase.from('guests').update({ status }).eq('phone', guestPhone);
+    const fullPhone = normalizePhone(guestPhone);
+    const { error } = await supabase.from('guests').update({ status }).eq('phone', fullPhone);
     if (error) throw error;
 }
 
@@ -95,13 +138,21 @@ export async function updateGuestStatus(guestPhone, status) {
 // ════════════════════════════════════════════════
 
 export async function getGuest(phone) {
-    const { data } = await supabase.from('guests').select('*').eq('phone', phone).single();
+    const fullPhone = normalizePhone(phone);
+    const { data } = await supabase.from('guests').select('*').eq('phone', fullPhone).maybeSingle();
     return data;
 }
 
 export async function saveGuest(phone, data) {
+    const fullPhone = normalizePhone(phone);
     // Ensure phone is included in the upsert data
-    const { error } = await supabase.from('guests').upsert({ phone, ...data });
+    const { error } = await supabase.from('guests').upsert({ phone: fullPhone, ...data });
+    if (error) throw error;
+}
+
+export async function removeGuest(phone) {
+    const fullPhone = normalizePhone(phone);
+    const { error } = await supabase.from('guests').delete().eq('phone', fullPhone);
     if (error) throw error;
 }
 
@@ -123,6 +174,134 @@ async function fetchAllGuests(callback) {
 }
 
 // ════════════════════════════════════════════════
+// ════════════════════════════════════════════════
+// 📸 EVENT GALLERY & SOCIAL
+// ════════════════════════════════════════════════
+
+export async function uploadGalleryPhoto(phone, file, message) {
+    const fileName = `gallery_${phone.replace(/\+/g, '')}_${Date.now()}.jpg`;
+    
+    // Upload to dedicated event-gallery bucket
+    const { error: uploadErr } = await supabase.storage.from('event-gallery').upload(fileName, file);
+    if (uploadErr) throw uploadErr;
+
+    const { data } = supabase.storage.from('event-gallery').getPublicUrl(fileName);
+    
+    // Create post entry
+    const { error: postErr } = await supabase.from('gallery_posts').insert([{
+        guest_phone: phone,
+        photo_url: data.publicUrl,
+        message: message || ''
+    }]);
+    if (postErr) throw postErr;
+}
+
+export async function fetchGalleryPosts() {
+    const { data } = await supabase.from('gallery_posts')
+        .select('*, guests(name, photo_url)')
+        .order('created_at', { ascending: false });
+    return data || [];
+}
+
+export function listenToGallery(callback) {
+    const chan = supabase
+        .channel('gallery-sync')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'gallery_posts' }, () => {
+            fetchGalleryPosts().then(callback);
+        })
+        .subscribe();
+    fetchGalleryPosts().then(callback);
+    return () => supabase.removeChannel(chan);
+}
+
+export async function removeGalleryPost(postId) {
+    const { error } = await supabase.from('gallery_posts').delete().eq('id', postId);
+    if (error) throw error;
+}
+
+// ════════════════════════════════════════════════
+// 💬 COMMENTS
+// ════════════════════════════════════════════════
+
+export async function addComment(postId, phone, content, parentId = null) {
+    const { error } = await supabase.from('comments').insert([{
+        post_id: postId,
+        guest_phone: phone,
+        content: content,
+        parent_id: parentId
+    }]);
+    if (error) throw error;
+}
+
+export async function fetchComments(postId) {
+    const { data } = await supabase.from('comments')
+        .select('*, guests(name, photo_url)')
+        .eq('post_id', postId)
+        .order('created_at', { ascending: true });
+    return data || [];
+}
+
+export function listenToComments(postId, callback) {
+    const chan = supabase
+        .channel(`comments-${postId}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'comments', filter: `post_id=eq.${postId}` }, () => {
+            fetchComments(postId).then(callback);
+        })
+        .subscribe();
+    fetchComments(postId).then(callback);
+    return () => supabase.removeChannel(chan);
+}
+
+// ════════════════════════════════════════════════
+// ❤️ LIKES
+// ════════════════════════════════════════════════
+
+export async function fetchPostLikes(postId, type = 'gallery') {
+    const { data } = await supabase.from('likes')
+        .select('user_phone, guests(name, photo_url)')
+        .eq('target_id', postId)
+        .eq('target_type', type);
+    return data || [];
+}
+
+export async function fetchUserLikes(userPhone) {
+    const { data } = await supabase.from('likes')
+        .select('target_id')
+        .eq('user_phone', userPhone);
+    return (data || []).map(l => l.target_id);
+}
+
+
+/**
+ * Universal Like System
+ * @param {string} userPhone - Phone of person liking
+ * @param {string} targetId - Post UUID or Outfit Guest Phone
+ * @param {string} type - 'gallery' or 'outfit'
+ */
+export async function toggleLike(userPhone, targetId, type) {
+    const fullPhone = normalizePhone(userPhone);
+    // 1. Check if already liked
+    const { data: existing } = await supabase.from('likes')
+        .select('id')
+        .eq('user_phone', fullPhone)
+        .eq('target_id', targetId)
+        .eq('target_type', type)
+        .maybeSingle(); // Better than .single() which errors on zero results
+
+    if (existing) {
+        // Unlike - Counts are updated by tr_update_like_count in Postgres
+        await supabase.from('likes').delete().eq('id', existing.id);
+    } else {
+        // Like - Counts are updated by tr_update_like_count in Postgres
+        await supabase.from('likes').insert([{
+            user_phone: fullPhone,
+            target_id: targetId,
+            target_type: type
+        }]);
+    }
+}
+
+
 // DISH SERVICES
 // ════════════════════════════════════════════════
 
@@ -156,10 +335,10 @@ export async function removeDish(id) {
 // ════════════════════════════════════════════════
 
 export async function uploadOutfit(phone, file) {
-    const fileName = `${phone}_${Date.now()}.jpg`;
+    const fileName = `${phone.replace(/\+/g, '')}_${Date.now()}.jpg`;
     const { data, error } = await supabase.storage
         .from('outfits')
-        .upload(fileName, file);
+        .upload(fileName, file, { contentType: 'image/jpeg' });
 
     if (error) throw error;
 
@@ -173,7 +352,7 @@ export async function uploadOutfit(phone, file) {
 }
 
 export async function fetchAllOutfits() {
-    const { data } = await supabase.from('guests').select('name, outfit_url').not('outfit_url', 'is', null);
+    const { data } = await supabase.from('guests').select('name, phone, outfit_url, votes, photo_url').not('outfit_url', 'is', null);
     return data || [];
 }
 
@@ -198,9 +377,8 @@ export const auth = {
 
 // Custom Login Logic
 export async function fastLogin(phone) {
-    const fullPhone = phone.startsWith('+') ? phone : '+91' + phone;
+    const fullPhone = normalizePhone(phone);
     // For now, allow any valid-looking number to "login"
-    // In production, you might want to check if they are in the 'guests' or 'roles' table first
     localStorage.setItem('user_phone', fullPhone);
     return { phoneNumber: fullPhone };
 }
@@ -232,13 +410,8 @@ async function fetchFeedback(callback) {
 }
 
 export async function voteForOutfit(voterPhone, outfitPhone) {
-    const { data: guest, error: fetchErr } = await supabase.from('guests').select('votes').eq('phone', outfitPhone).single();
-    if (fetchErr) throw fetchErr;
-
-    const { error: updateErr } = await supabase.from('guests').update({
-        votes: (guest.votes || 0) + 1
-    }).eq('phone', outfitPhone);
-    if (updateErr) throw updateErr;
+    // Redirecting to universal like system for consistency
+    return toggleLike(voterPhone, outfitPhone, 'outfit');
 }
 
 // Connection Check

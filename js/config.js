@@ -6,7 +6,7 @@ export const CONFIG = {
     EVENT_NAME: "80 Glorious Years — A Celebration",
     GRANDPARENT_NAME: "Grandpa & Grandma",
     DATE: "March 28, 2026",
-    VENUE: ",",
+    VENUE: "Grand Hotel Ballroom",
 
     // Branding
     COLORS: {

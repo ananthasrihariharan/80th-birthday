@@ -8,17 +8,33 @@ let lastScanTime = 0;
 let scanVideo, scanCanvas, scanContext, scanToast;
 let scannerActive = false;
 let videoStream = null;
+let waiterListeners = [];
+let allAvailableDishes = [];
+let lastWaiterQueue = [];
 
 export function initWaiterDashboard(showScreen, showToast, currentUser) {
     showScreen('screen-waiter');
+    
+    // Stop any existing scanner first
+    stopScanner();
     initScanner(showToast);
+
+    // Cleanup existing listeners
+    waiterListeners.forEach(unsub => { if(typeof unsub === 'function') unsub(); });
+    waiterListeners = [];
 
     // Expose for manual retry if needed
     window.retryWaiterScanner = () => initScanner(showToast);
 
-    dbService.listenToAssignedGuests(currentUser.phoneNumber, (guests) => {
+    waiterListeners.push(dbService.listenToDishes((dishes) => {
+        allAvailableDishes = dishes;
+        if (lastWaiterQueue.length > 0) renderWaiterQueue(lastWaiterQueue);
+    }));
+
+    waiterListeners.push(dbService.listenToAssignedGuests(currentUser.phoneNumber, (guests) => {
+        lastWaiterQueue = guests;
         renderWaiterQueue(guests);
-    });
+    }));
 }
 
 function initScanner(showToast) {
@@ -92,16 +108,21 @@ function initScanner(showToast) {
 
     const tryConstraints = async (index) => {
         if (index >= constraintsSet.length) {
+            console.error("❌ All camera constraints failed");
             showToast('Camera not found or blocked 📸', 'error');
             const btn = document.getElementById('btn-retry-camera');
-            if (btn) btn.style.display = 'block';
+            if (btn) {
+                btn.style.display = 'block';
+                btn.textContent = "Retry Camera 📸";
+            }
             return;
         }
 
         try {
+            console.log(`📡 Trying camera constraint set ${index}...`);
             await startCamera(constraintsSet[index]);
         } catch (err) {
-            console.warn(`⚠️ Constraint set ${index} failed:`, err.name);
+            console.warn(`⚠️ Constraint set ${index} failed (${err.name}):`, err.message);
             await tryConstraints(index + 1);
         }
     };
@@ -141,33 +162,46 @@ function tick(time) {
                     const imageData = scanContext.getImageData(0, 0, scanCanvas.width, scanCanvas.height);
 
                     if (window.jsQR) {
-                        const code = window.jsQR(imageData.data, imageData.width, imageData.height, {
-                            inversionAttempts: 'attemptBoth',
-                        });
+                        try {
+                            const code = window.jsQR(imageData.data, imageData.width, imageData.height, {
+                                inversionAttempts: 'attemptBoth',
+                            });
 
-                        if (code) {
-                            console.log("📍 QR Found:", code.data);
+                             if (code) {
+                                 console.log("📍 QR Found! Data:", code.data);
+                                 
+                                 // 1. Trigger Success Animation
+                                 const wrap = document.querySelector('.scan-wrap');
+                                 if (wrap) {
+                                     wrap.classList.add('success');
+                                     wrap.style.borderColor = "#4CAF50";
+                                     setTimeout(() => {
+                                         wrap.classList.remove('success');
+                                         wrap.style.borderColor = "";
+                                     }, 600);
+                                 }
+                                 
+                                 // 2. Haptic Feedback
+                                 if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
 
-                            // 1. Trigger Success Animation
-                            const wrap = document.querySelector('.scan-wrap');
-                            if (wrap) {
-                                wrap.classList.add('success');
-                                setTimeout(() => wrap.classList.remove('success'), 600);
-                            }
+                                 // 3. Process Result (Normalized)
+                                 let phoneToProcess = code.data.trim();
+                                 try {
+                                     const parsed = JSON.parse(code.data);
+                                     phoneToProcess = parsed.phone || phoneToProcess;
+                                 } catch (e) { /* Not JSON */ }
 
-                            // 2. Haptic Feedback
-                            if (navigator.vibrate) navigator.vibrate(120);
-
-                            // 3. Process Result
-                            try {
-                                const data = JSON.parse(code.data);
-                                handleScanResult(data.phone || data.toString());
-                            } catch (e) {
-                                const text = code.data.trim();
-                                if (/^\+?[\d\s-]{10,}$/.test(text)) handleScanResult(text);
-                            }
-                        }
-                    }
+                                 handleScanResult(phoneToProcess);
+                             } else {
+                                 // No QR code in current frame
+                             }
+                         } catch (qrErr) {
+                             console.error("❌ jsQR internal error:", qrErr);
+                         }
+                     } else {
+                         console.error("❌ jsQR library missing from window object! Check your script tags in index.html.");
+                         if (Math.random() < 0.05) alert("QR Scanner library missing! 🛠️");
+                     }
                 }
             }
         }
@@ -184,23 +218,57 @@ function stopScanner() {
         videoStream.getTracks().forEach(track => track.stop());
         videoStream = null;
     }
-    if (scanVideo) scanVideo.srcObject = null;
+    if (scanVideo) {
+        scanVideo.srcObject = null;
+    }
 }
 
 async function handleScanResult(phone) {
-    if (!scannerActive) return;
+    if (!phone) return;
+    
+    // De-bounce and Pause
+    const now = Date.now();
+    if (now - lastScanTime < 2000) return; 
+    lastScanTime = now;
 
-    // Pause scanner to give feedback
-    scannerActive = false;
-
-    document.getElementById('checkin-phone').value = phone;
-    await checkInGuest();
-
-    // Resume after 3 seconds
+    console.log("🎯 QR Scanned:", phone);
+    
+    // Visual feedback
+    if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+    
+    // Stop scanner to show result
+    stopScanner();
+    
+    // Attempt check-in
+    await checkInGuest(phone);
     setTimeout(() => {
         if (videoStream) scannerActive = true;
         requestAnimationFrame(tick);
     }, 3000);
+}
+
+function renderCurrentSessionDishes(guest) {
+    const currentSess = getCurrentSessionKey();
+    const selections = guest.menu_selections || {};
+    const data = selections[currentSess] || { dishes: [], fav: "" };
+
+    if (!data || (!data.dishes && !guest.dishes)) {
+        return '<span class="text-[10px] opacity-40">No dishes selected yet</span>';
+    }
+
+    const dishes = data.dishes || guest.dishes || [];
+    
+    // Resolve IDs to Names
+    const names = dishes.map(id => {
+        const d = allAvailableDishes.find(item => item.id === id);
+        return d ? d.name : id;
+    });
+
+    const html = names.map(n => `<span class="px-2 py-1 bg-white rounded text-[10px] font-bold border border-gold-light/20">✦ ${n}</span>`).join('');
+    const favNote = data.fav || guest.fav_dish;
+    const favHtml = favNote ? `<div class="w-full mt-2 p-2 bg-red-50 border-l-4 border-red-500 rounded animate-pulse"><p class="text-[10px] text-red-700 font-extrabold italic uppercase tracking-wider">⚠️ Special Request: ${favNote}</p></div>` : '';
+    
+    return `<div class="flex flex-wrap gap-1">${html}</div>${favHtml}`;
 }
 
 function renderWaiterQueue(guests) {
@@ -214,19 +282,48 @@ function renderWaiterQueue(guests) {
 
     container.innerHTML = guests.map(g => `
         <div class="premium-card stagger-in mb-4">
-            <div class="flex justify-between items-start mb-2">
-                <div>
-                    <h4 class="font-bold text-lg">${g.name}</h4>
-                    <p class="text-xs text-gold font-bold">TABLE ${g.table_number || '??'}</p>
+            <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px;">
+                ${g.photo_url ? `<img src="${g.photo_url}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid var(--gold);">` : `<div style="width:48px;height:48px;border-radius:50%;background:var(--gold-pale);display:flex;align-items:center;justify-content:center;font-size:20px;">🌸</div>`}
+                <div class="flex-1">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h4 class="font-bold text-brown-deep">${g.name}</h4>
+                            <p class="text-[10px] text-gold font-extrabold tracking-widest">TABLE ${g.table_number || '??'}</p>
+                        </div>
+                        <span class="status-badge ${getStatusClass(g.status)}">${g.status}</span>
+                    </div>
+                    <p class="text-[10px] text-text-mid font-bold mt-1">📞 ${g.phone} | 👥 ${g.members} guests</p>
                 </div>
-                <span class="status-badge ${getStatusClass(g.status)}">${g.status}</span>
             </div>
             
-            <div class="text-xs text-text-mid mb-4">
-                <p>📞 ${g.phone}</p>
-                <p>👥 ${g.members} members</p>
-                <p class="mt-2 text-[10px] font-bold text-brown-warm uppercase">Dishes: ${(g.dishes || []).join(', ')}</p>
-                ${g.fav_dish ? `<p class="mt-1 text-[10px] text-gold italic">Special Request: ${g.fav_dish}</p>` : ''}
+            <div class="bg-ivory/50 rounded-xl p-3 border border-cream mb-4">
+                <p class="text-[9px] font-extrabold text-gold uppercase mb-2 tracking-widest">Menu Selections</p>
+                <div class="grid grid-cols-1 gap-2">
+                    ${(g.menu_selections && Object.keys(g.menu_selections).length > 0) ? 
+                        Object.entries(g.menu_selections).map(([key, data]) => `
+                            <div class="mb-1">
+                                <p class="text-[8px] font-bold text-gold/70 uppercase">${key.replace('_', ' ')}</p>
+                                <div class="flex flex-wrap gap-1">
+                                    ${(data.dishes || []).map(d => `<span class="px-1.5 py-0.5 bg-white rounded text-[8px] font-bold border border-gold-light/20">${d}</span>`).join('')}
+                                </div>
+                                ${data.fav ? `
+                                    <div class="w-full mt-1 p-1.5 bg-red-50 border-l-2 border-red-500 rounded">
+                                        <p class="text-[8px] text-red-700 font-bold italic">⚠️ ${data.fav}</p>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `).join('') :
+                        `<div class="flex flex-wrap gap-1">
+                            ${(g.dishes || []).map(d => `<span class="px-1.5 py-0.5 bg-white rounded text-[8px] font-bold border border-gold-light/20">${d}</span>`).join('')}
+                            ${g.fav_dish ? `
+                                <div class="w-full mt-2 p-2 bg-red-50 border-l-4 border-red-500 rounded animate-pulse">
+                                    <p class="text-[9px] text-red-700 font-black italic uppercase">⚠️ Special Request: ${g.fav_dish}</p>
+                                </div>
+                            ` : ''}
+                        </div>`
+                    }
+                </div>
+                ${(!g.menu_selections || Object.keys(g.menu_selections).length === 0) && (!g.dishes || g.dishes.length === 0) ? '<p class="text-[8px] italic opacity-40">No selections yet</p>' : ''}
             </div>
 
             <div class="flex gap-2">
@@ -254,52 +351,74 @@ export async function updateStatus(phone, status) {
     }
 }
 
-export async function checkInGuest() {
+export async function checkInGuest(phoneFromScan) {
     const phoneInput = document.getElementById('checkin-phone');
-    const phone = phoneInput.value.trim();
+    const phone = phoneFromScan || (phoneInput ? phoneInput.value.trim() : '');
     if (!phone) return;
 
     const resultEl = document.getElementById('checkin-result');
-    resultEl.innerHTML = '<p class="text-xs animate-pulse">Fetching details... 🌸</p>';
+    if (resultEl) resultEl.innerHTML = '<p class="text-xs animate-pulse p-4">Fetching details... 🌸</p>';
 
     try {
         const guest = await dbService.getGuest(phone);
 
         if (!guest) {
-            resultEl.innerHTML = '<p class="text-red-error p-4 text-xs font-bold">Guest not found! ❌</p>';
-            scanToast('Guest not found ❌', 'error');
+            if (resultEl) resultEl.innerHTML = '<p class="text-red-error p-4 text-xs font-bold">Guest not found! ❌</p>';
+            if (scanToast) scanToast('Guest not found ❌', 'error');
             return;
         }
 
-        // Check role to see if we should open allocation
-        const myPhone = localStorage.getItem('user_phone');
-        const myRole = await dbService.getUserRole(myPhone);
+        if (scanToast) scanToast('Guest Found! ✅', 'success');
+        
+        // Auto-activate on scan if not yet active
+        if (guest.status === 'pending') {
+            await dbService.updateGuestStatus(guest.phone, 'active');
+            if (scanToast) scanToast('Guest Activated! 🚀', 'success');
+        }
 
-        scanToast('Guest Found! ✅', 'success');
-
-        if (myRole === 'admin') {
-            // Using window bridge because AdminModule is not imported here
-            window.openAllocationUI(guest.phone);
-            resultEl.innerHTML = `<p class="text-green-success p-2 text-[10px] font-bold">Opening Allocation for ${guest.name}... ✨</p>`;
-        } else {
-            // Auto-activate on scan if not yet active
-            if (guest.status === 'pending') {
-                await dbService.updateGuestStatus(guest.phone, 'active');
-                scanToast('Guest Activated! 🚀', 'success');
-            }
-
+        // Hide scanner and show result
+        const scanArea = document.getElementById('waiter-scan-area');
+        if (scanArea) scanArea.style.display = 'none';
+        
+        if (resultEl) {
+            resultEl.style.display = 'block';
             resultEl.innerHTML = `
-                <div class="premium-card stagger-in mt-4 border-gold bg-gold-pale">
-                    <p class="font-bold text-brown-deep">${guest.name}</p>
-                    <p class="text-[10px] uppercase font-bold text-gold">Table: ${guest.table_number || 'NOT ASSIGNED'}</p>
-                    <div class="mt-2 p-2 bg-white rounded-lg border border-gold-light">
-                        <p class="text-[10px] font-bold text-brown-warm">SITTING WITH: ${guest.members} GUESTS</p>
+                <div class="premium-card stagger-in mt-4 border-gold bg-gold-pale overflow-hidden" style="max-width:320px; margin:0 auto;">
+                    ${guest.photo_url ? `<img src="${guest.photo_url}" class="w-full h-48 object-cover border-b border-gold-light mb-3">` : `<div class="h-48 bg-cream/30 flex items-center justify-center text-4xl">🌸</div>`}
+                    <div class="p-4">
+                        <p class="font-bold text-brown-deep text-xl mb-1">${guest.name}</p>
+                        <p class="text-[10px] uppercase font-extrabold text-gold tracking-widest mb-4">TABLE ${guest.table_number || 'NONE'} | ${guest.members} GUESTS</p>
+                        
+                        <div class="p-4 bg-white/80 rounded-2xl border border-gold-light/50">
+                            <p class="text-[9px] font-black text-brown-deep uppercase mb-3 tracking-widest">✦ READY TO SERVE</p>
+                            ${renderCurrentSessionDishes(guest)}
+                        </div>
+
+                        <div class="mt-4 flex gap-2">
+                             <button class="btn-gold flex-1 py-3 text-[10px]" onclick="updateStatus('${guest.phone}', 'served'); document.getElementById('checkin-result').style.display='none'; document.getElementById('waiter-scan-area').style.display='block';">Mark Served ✅</button>
+                             <button class="btn-gold flex-1 py-3 text-[10px] bg-red-600 border-red-600" style="background:#e5e7eb; color:#4b5563; border-color:#e5e7eb;" onclick="document.getElementById('checkin-result').style.display='none'; document.getElementById('waiter-scan-area').style.display='block';">Close</button>
+                        </div>
                     </div>
                 </div>
             `;
         }
     } catch (e) {
         console.error("Check-in error:", e);
-        resultEl.innerHTML = '<p class="text-red-error p-4 text-xs font-bold">Connection Error 🙏</p>';
+        if (resultEl) resultEl.innerHTML = '<p class="text-red-error p-4 text-xs font-bold">Connection Error 🙏</p>';
     }
+}
+
+function getCurrentSessionKey() {
+    const now = new Date();
+    const hour = now.getHours();
+    // Simple heuristic: adjust based on actual event schedule
+    let sess = 'Breakfast';
+    if(hour >= 11 && hour < 12) sess = 'Before-Lunch';
+    else if(hour >= 12 && hour < 16) sess = 'Lunch';
+    else if(hour >= 16 && hour < 19) sess = 'Evening-Snack';
+    else if(hour >= 19) sess = 'Dinner';
+    
+    // Logic for Day 1 vs Day 2 (assuming event starts on a specific date)
+    // For now, let's assume 'day1' but you can refine with date checks
+    return `day1_${sess}`;
 }

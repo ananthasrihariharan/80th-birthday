@@ -1,0 +1,180 @@
+/* ════════════════════════════════════════════════════════════
+   🎂 80TH BIRTHDAY — BASE STYLES & VARIABLES
+   Aesthetic: Heirloom Gold · Temple Silk · Candlelight Warm
+   ════════════════════════════════════════════════════════════ */
+
+:root {
+    --gold: #C9943A;
+    --gold-light: #E8C06A;
+    --gold-mid: #A67C27;
+    --gold-pale: #F5E8C5;
+    --gold-glow: rgba(201, 148, 58, 0.35);
+    --ivory: #FAF7F0;
+    --cream: #F2EAD8;
+    --champagne: #FDF5E6;
+    --brown-deep: #1A0C04;
+    --brown-mid: #3A1C08;
+    --brown-warm: #5C3D1E;
+    --text-dark: #1A0F06;
+    --text-mid: #5A3E28;
+    --text-soft: #9A7A5A;
+    --green: #2D6A2A;
+    --red: #C0392B;
+    --green-success: #27AE60;
+    --shadow-sm: 0 2px 12px rgba(30, 15, 5, 0.08);
+    --shadow-md: 0 8px 32px rgba(30, 15, 5, 0.12);
+    --shadow-lg: 0 20px 60px rgba(30, 15, 5, 0.2);
+    --shadow-gold: 0 8px 32px rgba(201, 148, 58, 0.3);
+    --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-top: env(safe-area-inset-top, 0px);
+    --touch-min: 48px;
+    --nav-h: 68px;
+}
+
+*,
+*::before,
+*::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-font-smoothing: antialiased;
+}
+
+html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: 'Outfit', sans-serif;
+    background: var(--ivory);
+    color: var(--text-dark);
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+}
+
+input,
+select,
+textarea {
+    font-size: 16px !important;
+}
+
+img {
+    display: block;
+    max-width: 100%;
+}
+
+button {
+    font-family: inherit;
+    cursor: pointer;
+}
+
+/* ═══ SCREENS ═══ */
+.screen {
+    display: none;
+    width: 100%;
+    min-height: 100vh;
+    min-height: 100dvh;
+    flex-direction: column;
+}
+
+.screen.active {
+    display: block;
+    animation: screenIn 0.4s var(--ease-smooth) both;
+}
+
+#screen-invitation.active,
+#screen-login.active {
+    display: flex;
+}
+
+@keyframes screenIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Global Animations */
+@keyframes spin {
+    to {
+        transform: translate(-50%, -50%) rotate(360deg);
+    }
+}
+
+@keyframes twinkle {
+    0% { opacity: 0.5 }
+    50% { opacity: 1 }
+    100% { opacity: 0.7 }
+}
+
+@keyframes breathe {
+    0%, 100% {
+        opacity: 0.25;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.6;
+        transform: scale(1.08);
+    }
+}
+
+@keyframes shine {
+    0% { transform: translateX(-100%) }
+    60% { transform: translateX(100%) }
+    100% { transform: translateX(100%) }
+}
+
+/* ═══ ENTRANCE HELPERS ═══ */
+.fade-up {
+    animation: fadeUp 0.5s var(--ease-spring) both;
+}
+.fade-up-1 { animation-delay: 0.05s; }
+.fade-up-2 { animation-delay: 0.1s; }
+.fade-up-3 { animation-delay: 0.15s; }
+.fade-up-4 { animation-delay: 0.2s; }
+.fade-up-5 { animation-delay: 0.25s; }
+
+@keyframes fadeUp {
+    from {
+        opacity: 0;
+        transform: translateY(16px)
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0)
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1)
+    }
+    50% {
+        opacity: 0.55;
+        transform: scale(1.1)
+    }
+}
+
+.animate-pulse {
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+.hide-sb {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+.hide-sb::-webkit-scrollbar {
+    display: none;
+}

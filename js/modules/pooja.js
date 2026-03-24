@@ -18,7 +18,7 @@ function renderPoojaCards() {
     container.innerHTML = photos.map((img, index) => `
         <div class="pooja-card stagger-in animate" style="animation-delay: ${index * 0.1}s">
             <div class="pooja-frame">
-                <img src="${img}" alt="Temple Pooja" loading="lazy">
+                <img src="${img}" alt="Temple Pooja" loading="lazy" onclick="openLightbox(this.src)" style="cursor:pointer;">
             </div>
             <div class="pooja-label">
                 <span class="text-[10px] uppercase tracking-widest text-gold font-bold">Sacred Moment</span>

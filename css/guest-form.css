@@ -1,0 +1,202 @@
+/* ═══ GUEST FORM SCREEN ═══ */
+
+.photo-zone {
+    border: 2px dashed rgba(201, 148, 58, 0.4);
+    border-radius: 16px;
+    padding: 28px 20px;
+    text-align: center;
+    cursor: pointer;
+    background: rgba(245, 232, 197, 0.12);
+    min-height: 110px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.25s;
+}
+
+.photo-zone:active {
+    border-color: var(--gold);
+    background: rgba(245, 232, 197, 0.3);
+    transform: scale(0.99);
+}
+
+.photo-zone input {
+    display: none;
+}
+
+.photo-zone-icon {
+    font-size: 34px;
+}
+
+.photo-zone-text {
+    font-size: 14px;
+    color: var(--text-mid);
+}
+
+.photo-zone-sub {
+    font-size: 11px;
+    color: var(--text-soft);
+}
+
+/* Meal Session Note */
+.form-group.bg-ivory {
+    background-color: var(--ivory);
+}
+
+/* ═══ MENU NAVIGATION BUTTONS ═══ */
+
+.menu-nav-wrap {
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid var(--cream);
+    border-radius: 16px;
+    padding: 14px;
+}
+
+.day-selector {
+    display: flex;
+    background: rgba(201, 148, 58, 0.08); /* faint gold */
+    border-radius: 10px;
+    padding: 4px;
+    gap: 4px;
+}
+
+.day-btn {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    background: transparent;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-mid);
+    cursor: pointer;
+    transition: all 0.25s var(--ease-spring);
+}
+
+.day-btn.active {
+    background: #fff;
+    color: var(--gold);
+    box-shadow: 0 2px 8px rgba(201, 148, 58, 0.15);
+}
+
+.session-selector {
+    display: flex;
+    overflow-x: auto;
+    gap: 8px;
+    padding-bottom: 4px;
+    scroll-behavior: smooth;
+}
+
+.sess-btn {
+    flex: 0 0 auto;
+    padding: 8px 16px;
+    border: 1px solid var(--cream);
+    background: #fff;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-mid);
+    cursor: pointer;
+    transition: all 0.25s var(--ease-spring);
+    white-space: nowrap;
+}
+
+.sess-btn.active {
+    background: linear-gradient(135deg, var(--gold), var(--gold-light));
+    border-color: transparent;
+    color: #fff;
+    box-shadow: 0 4px 10px rgba(201, 148, 58, 0.25);
+    transform: translateY(-1px);
+}
+
+.sess-btn:active {
+    transform: scale(0.96);
+}
+
+/* Dish Chips */
+.category-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 10px;
+    padding-left: 2px;
+}
+
+.dish-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+@media (min-width: 360px) {
+    .dish-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+.dish-chip {
+    position: relative;
+    border: 1.5px solid var(--cream);
+    border-radius: 14px;
+    padding: 14px 8px 10px;
+    text-align: center;
+    cursor: pointer;
+    background: var(--ivory);
+    transition: all 0.25s var(--ease-spring);
+    -webkit-user-select: none;
+    user-select: none;
+    min-height: 80px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+.dish-chip:active {
+    transform: scale(0.94);
+}
+
+.dish-chip.selected {
+    background: var(--gold-pale);
+    border-color: var(--gold);
+    transform: scale(1.04);
+    box-shadow: 0 4px 16px rgba(201, 148, 58, 0.2);
+}
+
+.dish-check {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.dish-chip.selected .dish-check {
+    display: flex;
+}
+
+.dish-emoji {
+    font-size: 24px;
+    line-height: 1;
+}
+
+.dish-name {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-dark);
+    line-height: 1.3;
+}

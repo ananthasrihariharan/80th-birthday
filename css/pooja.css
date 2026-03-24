@@ -1,0 +1,36 @@
+/* ═══ POOJA GALLERY ═══ */
+.pooja-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.pooja-card {
+    background: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--cream);
+    display: flex;
+    flex-direction: column;
+}
+
+.pooja-frame {
+    width: 100%;
+    aspect-ratio: 4/5;
+    overflow: hidden;
+    background: var(--ivory);
+}
+
+.pooja-frame img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.pooja-label {
+    padding: 8px;
+    text-align: center;
+    background: #fff;
+    border-top: 1px solid var(--cream);
+}
